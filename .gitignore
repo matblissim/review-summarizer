@@ -1,0 +1,22 @@
+# Fichiers de clés et credentials
+openai.txt
+service-account-key.json
+*.json
+
+# Fichiers Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env
+.venv/
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
