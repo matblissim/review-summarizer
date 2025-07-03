@@ -191,7 +191,7 @@ def save_summary_to_bigquery(product_data, analysis, cost):
         "avg_rating": float(product_data['avg_rating']),
         "review_period_start": product_data['period_start'].isoformat(),
         "review_period_end": product_data['period_end'].isoformat(),
-        "global_analysis": analysis['global_analysis'],
+        "global_analysis": analysis.get('global_analysis', 'N/A'),
         "positive_summary": analysis['positive_summary'],
         "negative_summary": analysis['negative_summary'],
         "key_themes": analysis['key_themes'],
@@ -204,15 +204,36 @@ def save_summary_to_bigquery(product_data, analysis, cost):
     }
     
     logger.info("Sauvegarde dans BigQuery...")
-    table = bq_client.get_table(table_id)
-    errors = bq_client.insert_rows_json(table, [row_to_insert])
+    logger.info(f"Données à insérer: {json.dumps(row_to_insert, indent=2, default=str)}")
     
-    if errors:
-        logger.error(f"Erreurs lors de l'insertion: {errors}")
+    try:
+        table = bq_client.get_table(table_id)
+        logger.info(f"Table trouvée: {table.table_id}")
+        
+        errors = bq_client.insert_rows_json(table, [row_to_insert])
+        
+        if errors:
+            logger.error(f"Erreurs lors de l'insertion: {errors}")
+            return False
+        else:
+            logger.info(f"✅ Résumé sauvegardé pour {product_data['fz_sku']}")
+            
+            # Vérification immédiate
+            check_query = f"""
+            SELECT COUNT(*) as count 
+            FROM `{table_id}` 
+            WHERE fz_sku = '{product_data['fz_sku']}' 
+            AND summary_date = CURRENT_DATE()
+            """
+            result = bq_client.query(check_query).result()
+            count = list(result)[0]['count']
+            logger.info(f"Vérification: {count} ligne(s) trouvée(s) pour {product_data['fz_sku']}")
+            
+            return True
+            
+    except Exception as e:
+        logger.error(f"Erreur lors de la sauvegarde: {e}")
         return False
-    else:
-        logger.info(f"✅ Résumé sauvegardé pour {product_data['fz_sku']}")
-        return True
 
 def main():
     """
