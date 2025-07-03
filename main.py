@@ -24,6 +24,30 @@ bq_client = bigquery.Client(project=PROJECT_ID)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def load_products_from_file(filename="products.txt"):
+    """
+    Charge la liste des produits depuis un fichier texte
+    """
+    products = []
+    
+    try:
+        with open(filename, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                # Ignorer les lignes vides et les commentaires
+                if line and not line.startswith('#'):
+                    products.append(line)
+        
+        logger.info(f"📋 {len(products)} produit(s) chargé(s) depuis {filename}")
+        return products
+    
+    except FileNotFoundError:
+        logger.warning(f"⚠️ Fichier {filename} non trouvé, utilisation du produit par défaut")
+        return ["RES-STICKNETTOYANTVISAGE-50G"]
+    except Exception as e:
+        logger.error(f"❌ Erreur lors du chargement de {filename}: {e}")
+        return ["RES-STICKNETTOYANTVISAGE-50G"]
+
 def get_reviews_data(product_sku=None):
     """
     Récupère les données d'avis échantillonnées depuis BigQuery
@@ -196,50 +220,49 @@ def main():
     """
     logger.info("🚀 Démarrage du résumé automatique d'avis avec OpenAI")
     
-    # Récupérer le produit spécifique depuis les variables d'environnement (optionnel)
-    specific_product = os.getenv('SPECIFIC_PRODUCT', None)
+    # Charger la liste des produits depuis le fichier
+    products_to_analyze = load_products_from_file()
     
     total_cost = 0
+    successful_analyses = 0
     
     try:
-        # 1. Récupération des données
-        if specific_product:
-            logger.info(f"Analyse d'un produit spécifique: {specific_product}")
-            products_data = get_reviews_data(product_sku=specific_product)
-        else:
-            logger.info("Analyse de tous les produits")
-            products_data = get_reviews_data()
-        
-        if not products_data:
-            logger.warning("Aucun avis trouvé")
-            return
-        
-        logger.info(f"📊 {len(products_data)} produit(s) à analyser")
-        
-        # 2. Traitement de chaque produit
-        for i, product_data in enumerate(products_data, 1):
-            logger.info(f"[{i}/{len(products_data)}] Traitement de {product_data['fz_sku']} - {product_data['total_reviews']} avis")
+        # Traiter chaque produit de la liste
+        for product_index, product_sku in enumerate(products_to_analyze, 1):
+            logger.info(f"[{product_index}/{len(products_to_analyze)}] 🔍 Recherche d'avis pour {product_sku}")
             
-            # 3. Analyse IA
-            analysis, cost = analyze_reviews_with_ai(
-                product_data['all_comments'],
-                product_data['avg_rating'], 
-                product_data['total_reviews']
-            )
+            # 1. Récupération des données pour ce produit
+            products_data = get_reviews_data(product_sku=product_sku)
             
-            total_cost += cost
+            if not products_data:
+                logger.warning(f"⚠️ Aucun avis trouvé pour {product_sku}")
+                continue
             
-            if analysis:
-                # 4. Sauvegarde
-                success = save_summary_to_bigquery(product_data, analysis, cost)
-                if success:
-                    logger.info(f"✅ [{i}/{len(products_data)}] Traitement terminé pour {product_data['fz_sku']}")
+            # 2. Traitement du produit (normalement 1 seul résultat)
+            for product_data in products_data:
+                logger.info(f"[{product_index}/{len(products_to_analyze)}] 📊 Analyse de {product_data['fz_sku']} - {product_data['total_reviews']} avis")
+                
+                # 3. Analyse IA
+                analysis, cost = analyze_reviews_with_ai(
+                    product_data['all_comments'],
+                    product_data['avg_rating'], 
+                    product_data['total_reviews']
+                )
+                
+                total_cost += cost
+                
+                if analysis:
+                    # 4. Sauvegarde
+                    success = save_summary_to_bigquery(product_data, analysis, cost)
+                    if success:
+                        successful_analyses += 1
+                        logger.info(f"✅ [{product_index}/{len(products_to_analyze)}] Traitement terminé pour {product_data['fz_sku']}")
+                    else:
+                        logger.error(f"❌ [{product_index}/{len(products_to_analyze)}] Échec sauvegarde pour {product_data['fz_sku']}")
                 else:
-                    logger.error(f"❌ [{i}/{len(products_data)}] Échec sauvegarde pour {product_data['fz_sku']}")
-            else:
-                logger.error(f"❌ [{i}/{len(products_data)}] Échec analyse IA pour {product_data['fz_sku']}")
+                    logger.error(f"❌ [{product_index}/{len(products_to_analyze)}] Échec analyse IA pour {product_data['fz_sku']}")
         
-        logger.info(f"🎉 Analyse terminée - {len(products_data)} produits traités")
+        logger.info(f"🎉 Analyse terminée - {successful_analyses}/{len(products_to_analyze)} produits traités avec succès")
         logger.info(f"💰 Coût total de cette exécution: {total_cost:.4f}€")
     
     except Exception as e:
