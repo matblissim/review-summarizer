@@ -91,6 +91,7 @@ AVIS:
 
 Génère un résumé au format JSON avec cette structure exacte:
 {{
+  "global_analysis": "Analyse globale du produit en 3-4 phrases - vue d'ensemble de la satisfaction client et positionnement général",
   "positive_summary": "Résumé des points positifs en 2-3 phrases",
   "negative_summary": "Résumé des points négatifs en 2-3 phrases",
   "key_themes": ["thème1", "thème2", "thème3"],
@@ -166,6 +167,7 @@ def save_summary_to_bigquery(product_data, analysis, cost):
         "avg_rating": float(product_data['avg_rating']),
         "review_period_start": product_data['period_start'].isoformat(),
         "review_period_end": product_data['period_end'].isoformat(),
+        "global_analysis": analysis['global_analysis'],
         "positive_summary": analysis['positive_summary'],
         "negative_summary": analysis['negative_summary'],
         "key_themes": analysis['key_themes'],
@@ -194,21 +196,29 @@ def main():
     """
     logger.info("🚀 Démarrage du résumé automatique d'avis avec OpenAI")
     
-    # Test avec un produit spécifique
-    test_product = "RES-STICKNETTOYANTVISAGE-50G"
+    # Récupérer le produit spécifique depuis les variables d'environnement (optionnel)
+    specific_product = os.getenv('SPECIFIC_PRODUCT', None)
+    
     total_cost = 0
     
     try:
         # 1. Récupération des données
-        products_data = get_reviews_data(product_sku=test_product)
+        if specific_product:
+            logger.info(f"Analyse d'un produit spécifique: {specific_product}")
+            products_data = get_reviews_data(product_sku=specific_product)
+        else:
+            logger.info("Analyse de tous les produits")
+            products_data = get_reviews_data()
         
         if not products_data:
-            logger.warning("Aucun avis trouvé pour le produit")
+            logger.warning("Aucun avis trouvé")
             return
         
+        logger.info(f"📊 {len(products_data)} produit(s) à analyser")
+        
         # 2. Traitement de chaque produit
-        for product_data in products_data:
-            logger.info(f"Traitement de {product_data['fz_sku']} - {product_data['total_reviews']} avis")
+        for i, product_data in enumerate(products_data, 1):
+            logger.info(f"[{i}/{len(products_data)}] Traitement de {product_data['fz_sku']} - {product_data['total_reviews']} avis")
             
             # 3. Analyse IA
             analysis, cost = analyze_reviews_with_ai(
@@ -223,12 +233,13 @@ def main():
                 # 4. Sauvegarde
                 success = save_summary_to_bigquery(product_data, analysis, cost)
                 if success:
-                    logger.info(f"✅ Traitement terminé pour {product_data['fz_sku']}")
+                    logger.info(f"✅ [{i}/{len(products_data)}] Traitement terminé pour {product_data['fz_sku']}")
                 else:
-                    logger.error(f"❌ Échec sauvegarde pour {product_data['fz_sku']}")
+                    logger.error(f"❌ [{i}/{len(products_data)}] Échec sauvegarde pour {product_data['fz_sku']}")
             else:
-                logger.error(f"❌ Échec analyse IA pour {product_data['fz_sku']}")
+                logger.error(f"❌ [{i}/{len(products_data)}] Échec analyse IA pour {product_data['fz_sku']}")
         
+        logger.info(f"🎉 Analyse terminée - {len(products_data)} produits traités")
         logger.info(f"💰 Coût total de cette exécution: {total_cost:.4f}€")
     
     except Exception as e:
