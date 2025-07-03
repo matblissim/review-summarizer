@@ -1,7 +1,5 @@
 # Fichiers de clés et credentials
-openai.txt
-service-account-key.json
-*.json
+
 
 # Fichiers Python
 __pycache__/
