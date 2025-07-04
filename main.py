@@ -65,7 +65,7 @@ def get_reviews_data(product_sku=None):
         ) as rn_by_rating
       FROM `normalised-417010.reviews.reviews_by_user`
       WHERE fr_comment IS NOT NULL 
-        AND review_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 90 DAY)
+        AND review_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 365 DAY)
         {}
     ),
     sampled_reviews AS (
@@ -115,7 +115,7 @@ AVIS:
 
 Génère un résumé au format JSON avec cette structure exacte:
 {{
-  "global_analysis": "Analyse globale du produit en 3-4 phrases - vue d'ensemble de la satisfaction client et positionnement général",
+  "global_analysis": "Analyse globale du produit en 3-4 phrases - vue d'ensemble de la satisfaction client et positionnement général sans mentionner la note",
   "positive_summary": "Résumé des points positifs en 2-3 phrases",
   "negative_summary": "Résumé des points négatifs en 2-3 phrases",
   "key_themes": ["thème1", "thème2", "thème3"],
