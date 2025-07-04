@@ -50,7 +50,7 @@ def load_products_from_file(filename="products.txt"):
 
 def get_reviews_data(product_sku=None):
     """
-    Récupère les données d'avis échantillonnées depuis BigQuery
+    Récupère les données d'avis échantillonnées depuis BigQuery avec échantillonnage proportionnel (25%)
     """
     query = """
     WITH recent_reviews AS (
@@ -58,24 +58,36 @@ def get_reviews_data(product_sku=None):
         fz_sku,
         fr_comment,
         rating,
-        review_date,
-        ROW_NUMBER() OVER (
-          PARTITION BY fz_sku, rating 
-          ORDER BY review_date DESC
-        ) as rn_by_rating
+        review_date
       FROM `normalised-417010.reviews.reviews_by_user`
       WHERE fr_comment IS NOT NULL 
-        AND review_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 90 DAY)
+        AND review_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 365 DAY)
         {}
     ),
-    sampled_reviews AS (
+    rating_distribution AS (
       SELECT 
         fz_sku,
-        fr_comment,
         rating,
-        review_date
+        COUNT(*) as count_per_rating,
+        COUNT(*) OVER (PARTITION BY fz_sku) as total_reviews
       FROM recent_reviews
-      WHERE rn_by_rating <= 40
+      GROUP BY fz_sku, rating
+    ),
+    proportional_sample AS (
+      SELECT 
+        r.fz_sku,
+        r.fr_comment,
+        r.rating,
+        r.review_date,
+        -- Échantillonnage proportionnel : 25% des avis, répartis selon la distribution réelle
+        ROW_NUMBER() OVER (
+          PARTITION BY r.fz_sku, r.rating 
+          ORDER BY r.review_date DESC
+        ) as rn,
+        -- Calculer combien d'avis prendre par note (25% du total, proportionnel)
+        GREATEST(1, CAST(ROUND(rd.count_per_rating * 0.25) AS INT64)) as max_per_rating
+      FROM recent_reviews r
+      JOIN rating_distribution rd ON r.fz_sku = rd.fz_sku AND r.rating = rd.rating
     )
     SELECT 
       fz_sku,
@@ -84,7 +96,8 @@ def get_reviews_data(product_sku=None):
       COUNT(*) as total_reviews,
       MIN(review_date) as period_start,
       MAX(review_date) as period_end
-    FROM sampled_reviews
+    FROM proportional_sample
+    WHERE rn <= max_per_rating
     GROUP BY fz_sku
     HAVING COUNT(*) >= 5
     """
@@ -108,7 +121,7 @@ def generate_summary_prompt(comments, avg_rating, total_reviews):
     if len(comments) > max_chars:
         comments = comments[:max_chars] + "..."
     
-    prompt = f"""Analyse ces {total_reviews} avis clients (note moyenne: {avg_rating:.1f}/5).
+    prompt = f"""Analyse ces {total_reviews} avis clients.
 
 AVIS:
 {comments}
