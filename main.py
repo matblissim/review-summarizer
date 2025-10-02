@@ -128,7 +128,7 @@ AVIS:
 
 Génère un résumé au format JSON avec cette structure exacte:
 {{
-  "global_analysis": "Analyse globale du produit en 3-4 phrases - vue d'ensemble de la satisfaction client et positionnement général basé uniquement sur les retours clients, sans mentionner de notes numériques -  (pour les notes globales par produit >4.4 prédominance positive et  présenter les aspects négatifs en fin de texte en précisant qu'il s'agit des quelques avis négatifs selon leur perception personnelle) ",
+  "global_analysis": "Analyse globale du produit en 3-4 phrases - vue d'ensemble de la satisfaction client et positionnement général basé uniquement sur les retours clients, sans mentionner de notes numériques -  (pour les notes globales par produit >4.4 prédominance positive et  présenter les aspects négatifs en fin de texte en - sans vocabulaire synonyme aux problèmes-  précisant qu'il s'agit des quelques avis négatifs selon leur perception personnelle) ",
   "positive_summary": "Résumé des points positifs en 2-3 phrases",
   "negative_summary": "Résumé des points négatifs en 2-3 phrases",
   "key_themes": ["thème1", "thème2", "thème3"],
