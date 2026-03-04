@@ -20,10 +20,10 @@ LOG_FILE = f"review_summarizer_{_run_timestamp}.log"
 
 # Configuration logging : console (WARNING seulement) + fichier complet
 _console_handler = logging.StreamHandler()
-_console_handler.setLevel(logging.INFO)
+_console_handler.setLevel(logging.WARNING)
 
 _file_handler = logging.FileHandler(LOG_FILE, encoding="utf-8")
-_file_handler.setLevel(logging.INFO)
+_file_handler.setLevel(logging.WARNING)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -306,7 +306,7 @@ def main():
             # 2. Traitement du produit (normalement 1 seul résultat)
             for product_data in products_data:
                 logger.info(f"[{product_index}/{len(products_to_analyze)}] 📊 Analyse de {product_data['fz_sku']} - {product_data['total_reviews']} avis")
-                print(f"[{product_index}/{len(products_to_analyze)}] {product_data['fz_sku']} - {product_data['total_reviews']} avis")
+                logger.warning(f"[{product_index}/{len(products_to_analyze)}] {product_data['fz_sku']} - {product_data['total_reviews']} avis")
                 
                 # 3. Analyse IA
                 analysis, cost = analyze_reviews_with_ai(
