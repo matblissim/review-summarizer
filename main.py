@@ -12,7 +12,7 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "service-account-key.json"
 # Configuration - MODIFIEZ CES VALEURS SELON VOS BESOINS
 PROJECT_ID = "normalised-417010"  # Votre projet BigQuery
 MODEL_NAME = "gpt-4o-mini"        # Modèle OpenAI à utiliser
-LOG_BUCKET = "normalised-417010-rundeck-logs"  # Bucket GCS pour stocker les logs
+LOG_BUCKET = "review_summarizer"  # Bucket GCS pour stocker les logs
 
 # Initialisation du fichier de log horodaté
 _run_timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
