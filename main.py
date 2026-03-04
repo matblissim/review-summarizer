@@ -305,7 +305,6 @@ def main():
             
             # 2. Traitement du produit (normalement 1 seul résultat)
             for product_data in products_data:
-                logger.info(f"[{product_index}/{len(products_to_analyze)}] 📊 Analyse de {product_data['fz_sku']} - {product_data['total_reviews']} avis")
                 logger.warning(f"[{product_index}/{len(products_to_analyze)}] {product_data['fz_sku']} - {product_data['total_reviews']} avis")
                 
                 # 3. Analyse IA
