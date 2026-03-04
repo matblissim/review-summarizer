@@ -1,5 +1,6 @@
 import openai
 from google.cloud import bigquery
+from google.cloud import storage
 import json
 import os
 from datetime import datetime, date
@@ -11,6 +12,22 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "service-account-key.json"
 # Configuration - MODIFIEZ CES VALEURS SELON VOS BESOINS
 PROJECT_ID = "normalised-417010"  # Votre projet BigQuery
 MODEL_NAME = "gpt-4o-mini"        # Modèle OpenAI à utiliser
+LOG_BUCKET = "normalised-417010-rundeck-logs"  # Bucket GCS pour stocker les logs
+
+# Initialisation du fichier de log horodaté
+_run_timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+LOG_FILE = f"review_summarizer_{_run_timestamp}.log"
+
+# Configuration logging : console + fichier local
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler(LOG_FILE, encoding="utf-8"),
+    ],
+)
+logger = logging.getLogger(__name__)
 
 # Lecture de la clé OpenAI depuis le fichier
 with open("openai.txt", "r") as f:
@@ -19,10 +36,22 @@ with open("openai.txt", "r") as f:
 # Initialisation des clients
 client = openai.OpenAI(api_key=OPENAI_API_KEY)
 bq_client = bigquery.Client(project=PROJECT_ID)
+gcs_client = storage.Client(project=PROJECT_ID)
 
-# Configuration logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+
+def upload_log_to_gcs(log_file: str, bucket_name: str) -> None:
+    """
+    Uploade le fichier de log local vers Google Cloud Storage.
+    Le fichier est rangé dans le dossier 'rundeck-runs/' du bucket.
+    """
+    try:
+        bucket = gcs_client.bucket(bucket_name)
+        blob_name = f"rundeck-runs/{log_file}"
+        blob = bucket.blob(blob_name)
+        blob.upload_from_filename(log_file)
+        logger.info(f"📤 Log uploadé sur GCS : gs://{bucket_name}/{blob_name}")
+    except Exception as e:
+        logger.error(f"❌ Échec upload log GCS : {e}")
 
 def load_products_from_file(filename="products.txt"):
     """
@@ -302,6 +331,8 @@ def main():
     except Exception as e:
         logger.error(f"Erreur générale: {e}")
         raise
+    finally:
+        upload_log_to_gcs(LOG_FILE, LOG_BUCKET)
 
 if __name__ == "__main__":
     main()
