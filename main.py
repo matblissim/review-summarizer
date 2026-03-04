@@ -93,7 +93,6 @@ def get_reviews_data(product_sku=None):
         review_date
       FROM `normalised-417010.reviews.reviews_by_user`
       WHERE fr_comment IS NOT NULL 
-        AND review_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 365 DAY)
         {}
     ),
     rating_distribution AS (
