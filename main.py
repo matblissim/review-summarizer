@@ -18,14 +18,17 @@ LOG_BUCKET = "review_summarizer"  # Bucket GCS pour stocker les logs
 _run_timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 LOG_FILE = f"review_summarizer_{_run_timestamp}.log"
 
-# Configuration logging : console + fichier local
+# Configuration logging : console (WARNING seulement) + fichier complet
+_console_handler = logging.StreamHandler()
+_console_handler.setLevel(logging.WARNING)
+
+_file_handler = logging.FileHandler(LOG_FILE, encoding="utf-8")
+_file_handler.setLevel(logging.INFO)
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler(LOG_FILE, encoding="utf-8"),
-    ],
+    handlers=[_console_handler, _file_handler],
 )
 logger = logging.getLogger(__name__)
 
@@ -304,6 +307,7 @@ def main():
             # 2. Traitement du produit (normalement 1 seul résultat)
             for product_data in products_data:
                 logger.info(f"[{product_index}/{len(products_to_analyze)}] 📊 Analyse de {product_data['fz_sku']} - {product_data['total_reviews']} avis")
+                print(f"[{product_index}/{len(products_to_analyze)}] {product_data['fz_sku']} - {product_data['total_reviews']} avis")
                 
                 # 3. Analyse IA
                 analysis, cost = analyze_reviews_with_ai(
