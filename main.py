@@ -20,7 +20,7 @@ LOG_FILE = f"review_summarizer_{_run_timestamp}.log"
 
 # Configuration logging : console (WARNING seulement) + fichier complet
 _console_handler = logging.StreamHandler()
-_console_handler.setLevel(logging.WARNING)
+_console_handler.setLevel(logging.INFO)
 
 _file_handler = logging.FileHandler(LOG_FILE, encoding="utf-8")
 _file_handler.setLevel(logging.WARNING)
